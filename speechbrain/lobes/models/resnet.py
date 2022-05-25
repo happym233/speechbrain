@@ -3,14 +3,46 @@
 import torch
 import torch.nn as nn
 from speechbrain.nnet.CNN import Conv2d
+from speechbrain.nnet.linear import Linear
 from speechbrain.nnet.containers import Sequential
 from speechbrain.nnet.normalization import BatchNorm2d
+from speechbrain.nnet.pooling import Pooling2d, AdaptivePool
 
 
 class ResNet(Sequential):
 
-    def __init__(self, block_list, num_classes):
-        print('init')
+    def __init__(self, block, in_channels, layer_list, num_classes, norm_layer=None, group=1, width_per_group=64):
+        """
+
+        Parameters
+        ----------
+        block
+        layer_list: (num_blocks, channels, stride)
+        num_classes
+        group
+        width_per_group
+        """
+        layers = [Conv2d(in_channels=in_channels, out_channels=64, stride=2, kernel_size=5), Pooling2d('avg', 2)]
+
+        last_out_channel = 64
+        for layer in layer_list:
+            if len(layer) != 3:
+                raise ValueError(
+                    'Invalid input of layers, layer tuple should be: (num_blocks, output_channels, stride)')
+            layers.append(ResNet_layer(block,
+                                       num_blocks=layer[0],
+                                       in_channels=last_out_channel,
+                                       channels=layer[1],
+                                       stride=layer[2],
+                                       norm_layer=norm_layer,
+                                       dilate=False,
+                                       groups=group,
+                                       width_per_group=width_per_group))
+            last_out_channel = layer[1]
+
+        layers.append(AdaptivePool((1, 1)))
+        layers.append(Linear(input_size=last_out_channel, n_neurons=num_classes, combine_dims=True))
+        super(ResNet, self).__init__(*layers)
 
 
 class ResNet_layer(Sequential):
@@ -25,21 +57,21 @@ class ResNet_layer(Sequential):
                  dilate=False,
                  groups=1,
                  width_per_group=64):
-        layers = []
+        blocks = []
         if norm_layer is None:
             norm_layer = BatchNorm2d
         dilation = 1
         if dilate:
             dilation *= stride
             stride = 1
-        layers.append(block(in_channels, channels, stride, norm_layer,
+        blocks.append(block(in_channels, channels, stride, norm_layer,
                             groups, width_per_group))
 
         for _ in range(1, num_blocks):
-            layers.append(block(channels * block.expansion, channels, 1, norm_layer,
+            blocks.append(block(channels * block.expansion, channels, 1, norm_layer,
                                 groups, width_per_group, dilation))
 
-        super(ResNet_layer, self).__init__(*layers)
+        super(ResNet_layer, self).__init__(*blocks)
 
 
 def generate_downsample(in_channels, channels, expansion, stride, norm_layer):
@@ -56,7 +88,7 @@ def generate_downsample(in_channels, channels, expansion, stride, norm_layer):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_channels, channels, stride=1,  norm_layer=None,
+    def __init__(self, in_channels, channels, stride=1, norm_layer=None,
                  groups=1, base_width=64, dilation=1):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
@@ -129,11 +161,17 @@ class Bottleneck(torch.nn.Module):
 if __name__ == '__main__':
     # basicBlock = BasicBlock(4, 4)
     # bottleNeck = Bottleneck(4, 4)
-    inputs = torch.rand(10, 20, 20, 4)
+    inputs = torch.rand(10, 40, 40, 4)
     # outputs = basicBlock(inputs)
     # print(outputs.shape)
     # outputs = bottleNeck(inputs)
     # print(outputs.shape)
-    resnet_layer = ResNet_layer(Bottleneck, 2, 4, 8, 2)
-    outputs = resnet_layer(inputs)
+    # resnet_layer = ResNet_layer(Bottleneck, 2, 4, 8, 2)
+    # outputs = resnet_layer(inputs)
+    # print(outputs.shape)
+    adaptivePool = AdaptivePool((1, 1))
+    outputs = adaptivePool(inputs)
+    print(outputs.shape)
+    resnet = ResNet(block=BasicBlock, in_channels=4, layer_list=[(2, 64, 2), (2, 128, 2), (2, 256, 2)], num_classes=10)
+    outputs = resnet(inputs)
     print(outputs.shape)
