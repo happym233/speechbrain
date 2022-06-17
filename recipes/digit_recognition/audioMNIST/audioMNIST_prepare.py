@@ -18,8 +18,8 @@ def prepare_audioMNIST(
         data_folder,
         save_folder,
         split_ratio=[4, 1, 1],
-        split_base='speaker',
-        cover_prev=False
+        split_base='id',
+        reprepare=False
 ):
     """
     Prepares csv files for audioMNIST dataset
@@ -40,6 +40,8 @@ def prepare_audioMNIST(
     split_ratio : [int, int, int]
         List composed of three integers that sets split ratios for train, valid,
         and test sets, respectively. AudioMNIST will be split by speakers based on the ratio
+    reprepare: boolean
+        If data have already been prepared, whether or not data is required to be prepared again
 
      Example
     -------
@@ -50,7 +52,7 @@ def prepare_audioMNIST(
     save_csv_train = os.path.join(save_folder, TRAIN_CSV)
     save_csv_val = os.path.join(save_folder, VAL_CSV)
     save_csv_test = os.path.join(save_folder, TEST_CSV)
-    if skip(save_csv_train, save_csv_val, save_csv_test) and not cover_prev:
+    if skip(save_csv_train, save_csv_val, save_csv_test) and not reprepare:
         logger.info("Preparation completed in previous run, skipping.")
     else:
         logger.info("Data_preparation...")

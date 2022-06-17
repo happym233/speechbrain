@@ -1,0 +1,61 @@
+folder: D:\Documents\summer_project\audioMNIST
+data_folder: !ref <folder>
+save_folder: !ref <folder>
+split_ratio: [8, 1, 1]
+
+output_folder: !ref <folder>/output
+train_log: !ref <output_folder>/resnet_train_log3.txt
+train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
+    save_file: !ref <train_log>
+
+data_csv: !ref <save_folder>/data.csv
+train_csv: !ref <save_folder>/train.csv
+val_csv: !ref <save_folder>/val.csv
+test_csv: !ref <save_folder>/test.csv
+
+n_mels: 40
+number_of_epochs: 100
+batch_size: 100
+lr: 0.00005
+n_classes: 10
+device: cuda
+
+dataloader_options:
+    batch_size: !ref <batch_size>
+
+compute_features: !new:speechbrain.lobes.features.Fbank
+    n_mels: !ref <n_mels>
+
+norm: !new:speechbrain.processing.features.InputNormalization
+    norm_type: sentence
+    mean_norm: False
+    std_norm: False
+
+classifier: !new:speechbrain.lobes.models.resnet.ResNet
+    block_type: 'BasicBlock'
+    in_channels: 1
+    layer_list: [ [2, 64, 2], [2, 128, 2], [2, 256, 1]]
+    num_feats: !ref <n_mels>
+    num_classes: !ref <n_classes>
+
+modules:
+    compute_features: !ref <compute_features>
+    norm: !ref <norm>
+    classifier: !ref <classifier>
+
+opt_class: !name:torch.optim.Adam
+    lr: !ref <lr>
+
+error_stats: !name:speechbrain.utils.metric_stats.MetricStats
+    metric: !name:speechbrain.nnet.losses.classification_error
+        reduction: batch
+
+epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
+    limit: !ref <number_of_epochs>
+
+checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
+    checkpoints_dir: !ref <folder>
+    recoverables:
+        classifier: !ref <classifier>
+        normalizer: !ref <norm>
+        counter: !ref <epoch_counter>
