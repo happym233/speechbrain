@@ -2,9 +2,10 @@ folder: D:\Documents\summer_project\audioMNIST
 data_folder: !ref <folder>
 save_folder: !ref <folder>
 split_ratio: [8, 1, 1]
+split_base: id
 
 output_folder: !ref <folder>/output
-train_log: !ref <output_folder>/resnet_train_log3.txt
+train_log: !ref <output_folder>/resnet_train_log4.txt
 train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
     save_file: !ref <train_log>
 
@@ -15,7 +16,7 @@ test_csv: !ref <save_folder>/test.csv
 
 n_mels: 40
 number_of_epochs: 100
-batch_size: 100
+batch_size: 120
 lr: 0.00005
 n_classes: 10
 device: cuda
